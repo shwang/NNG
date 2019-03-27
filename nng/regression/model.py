@@ -100,7 +100,7 @@ class Model(BaseModel):
 
         hidden_sizes = self.config.get("hidden_sizes", None) or \
                 [default_hidden_size]
-        layer_sizes = [int(self.inputs.shape[-1])] + hidden_sizes + [1]
+        layer_sizes = [int(self.inputs.shape[-1])] + list(hidden_sizes) + [1]
         self.n_layers = len(layer_sizes) - 1
         layer_types = [layer_cls] * self.n_layers
         layer_params = [{}] * self.n_layers
@@ -161,7 +161,7 @@ class Model(BaseModel):
         if self.stub == "regression":
             return self.learn.y_pred
         elif self.stub == "ird":
-            return self.h_pred
+            return self.h_pred  # Idea: Try using noisy outputs for IRD?
         else:
             raise ValueError(self.stub)
 
