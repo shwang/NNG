@@ -100,7 +100,10 @@ class Model(BaseModel):
 
         hidden_sizes = self.config.get("hidden_sizes", None) or \
                 [default_hidden_size]
-        layer_sizes = [int(self.inputs.shape[-1])] + list(hidden_sizes) + [1]
+        layer_sizes = [int(self.inputs.shape[-1])] + list(hidden_sizes)
+        end_with_sum = self.config.get("end_with_sum", False)
+        if not end_with_sum:
+            layer_sizes.append(1)
         self.n_layers = len(layer_sizes) - 1
         layer_types = [layer_cls] * self.n_layers
         layer_params = [{}] * self.n_layers
@@ -128,7 +131,8 @@ class Model(BaseModel):
                 y=self.targets,
                 n_particles=self.n_particles,
                 std_y_train=self.config.std_train,
-                stub=self.stub)
+                stub=self.stub,
+                end_with_sum=end_with_sum)
 
         self.h_pred = tf.squeeze(self.learn.h_pred, 2)
         if self.stub == "ird":

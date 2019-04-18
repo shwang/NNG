@@ -15,7 +15,7 @@ class BayesianNetwork(object):
     """ BayesianNetwork is a class with flexible priors and variational posteriors.
     """
     def __init__(self, layer_sizes, layer_types, layer_params, out_params,
-            activation_fn, *, stub: str,
+            activation_fn, *, stub: str, end_with_sum: bool,
             outsample_cls: "Optional[Type[NormalOutSample]]" = None):
         """ Initialize BayesianNetwork.
         :param layer_sizes: [int]
@@ -27,6 +27,7 @@ class BayesianNetwork(object):
         """
         super(BayesianNetwork, self).__init__()
         self.stub = stub
+        self._end_with_sum = end_with_sum
         n_layers = len(layer_sizes)
         self._layer_sizes = layer_sizes
         self._layer_types = layer_types
@@ -121,6 +122,10 @@ class BayesianNetwork(object):
         h = l.forward(h)
         if self.first_build:
             add_to_collection('s'+str(i+1), h)
+
+        if self._end_with_sum:
+            h = tf.reduce_sum(h, axis=-1, keepdims=True)
+
         return h
 
     def predict(self, inputs, n_particles):
@@ -148,9 +153,10 @@ class BayesianLearning(object):
     """
     def __init__(self, *, layer_sizes, layer_types, layer_params, out_params,
             activation_fn, outsample_cls, x, y, n_particles,
-            stub: str, **kwargs):
+             stub: str, end_with_sum: bool, **kwargs):
         self._net = BayesianNetwork(layer_sizes, layer_types, layer_params,
-                out_params, activation_fn, outsample_cls=outsample_cls, stub=stub)
+                out_params, activation_fn, outsample_cls=outsample_cls,
+                                    stub=stub, end_with_sum=end_with_sum)
         self.stub = stub
         self._n_particles = n_particles
         self.x = x
