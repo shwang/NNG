@@ -109,6 +109,7 @@ class BayesianNetwork(object):
         :return: tensor of shape [n_particles, batch_size]
         """
         h = tf.tile(tf.expand_dims(inputs, 0), [n_particles, 1, 1])
+        i = 0
         for i, l in enumerate(self.layers[:-1]):
             if self.first_build:
                 add_to_collection('a'+str(i), h)
