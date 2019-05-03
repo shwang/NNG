@@ -11,7 +11,7 @@ def add_to_collection(key, value):
 def get_collection(key):
     return _FLAGS[key]
 
-def clear_collection(key):
+def clear_collection():
     _FLAGS.clear()
 
 def get_layer_input_activations(n_layers):
