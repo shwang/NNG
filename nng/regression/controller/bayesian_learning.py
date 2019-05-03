@@ -8,7 +8,7 @@ import zhusuan as zs
 from nng.regression.controller.sample import NormalOutSample
 from nng.regression.misc.layers import FeedForward
 from nng.regression.misc.eval_utils import rmse, log_likelihood
-from nng.regression.misc.collections import add_to_collection
+from nng.regression.misc.collections import add_to_collection, get_collection
 
 
 class BayesianNetwork(object):
@@ -109,20 +109,14 @@ class BayesianNetwork(object):
         :return: tensor of shape [n_particles, batch_size]
         """
         h = tf.tile(tf.expand_dims(inputs, 0), [n_particles, 1, 1])
-        i = 0
-        for i, l in enumerate(self.layers[:-1]):
+        for i, l in enumerate(self.layers):
             if self.first_build:
                 add_to_collection('a'+str(i), h)
             h = l.forward(h)
             if self.first_build:
                 add_to_collection('s'+str(i), h)
-            h = self.activation_fn(h)
-        l = self.layers[-1]
-        if self.first_build:
-            add_to_collection('a'+str(i+1), h)
-        h = l.forward(h)
-        if self.first_build:
-            add_to_collection('s'+str(i+1), h)
+            if i != len(self.layers) - 1:
+                h = self.activation_fn(h)
 
         if self._end_with_sum:
             h = tf.reduce_sum(h, axis=-1, keepdims=True)

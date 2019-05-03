@@ -35,6 +35,7 @@ class Trainer(BaseTrain):
         if self.model.init_ops is not None:
             self.sess.run(self.model.init_ops)
 
+        cur_epoch = 0
         for cur_epoch in range(self.config.epoch):
             if self.hook:
                 self.hook(epoch=cur_epoch, final=False)
