@@ -18,7 +18,7 @@ class Trainer(BaseTrain):
             train_loader: Iterable, test_loader: Iterable,
             config, logger, *, hook=None):
         super(Trainer, self).__init__(sess, model, config, logger)
-        if self.model.stub == "regression":
+        if self.model.ird_tag == "regression":
             self.train_loader = _DataLoaderIterWrapped(train_loader, self)
             self.test_loader = _DataLoaderIterWrapped(test_loader, self)
         else:
@@ -130,7 +130,7 @@ class Trainer(BaseTrain):
         self.summarizer.summarize(cur_iter, summaries_dict=summaries_dict)
 
         # Shuffle the dataset.
-        if self.model.stub == "regression":
+        if self.model.ird_tag == "regression":
             self.train_loader.data_loader.dataset.permute(0)  # pytype: disable=attribute-error
 
     def test_epoch(self) -> Tuple[float, float]:
@@ -186,7 +186,7 @@ class Trainer(BaseTrain):
         return self.sess.run(self.model.h_pred, feed_dict=fd)
 
     def sample_test_rewards(self, feat, n_samples):
-        assert self.model.stub == "ird"
+        assert self.model.ird_tag == "ird"
         fd = self.model.problem.test_fd(feat)
         fd[self.model.n_particles] = n_samples
         fetches = [self.model._bnn, self.model._main]

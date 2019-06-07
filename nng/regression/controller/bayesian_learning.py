@@ -15,7 +15,7 @@ class BayesianNetwork(object):
     """ BayesianNetwork is a class with flexible priors and variational posteriors.
     """
     def __init__(self, layer_sizes, layer_types, layer_params, out_params,
-            activation_fn, *, stub: str, end_with_sum: bool,
+            activation_fn, *, ird_tag: str, end_with_sum: bool,
             outsample_cls: "Optional[Type[NormalOutSample]]" = None):
         """ Initialize BayesianNetwork.
         :param layer_sizes: [int]
@@ -26,7 +26,7 @@ class BayesianNetwork(object):
         :param outsample_cls: Type[OutSample]
         """
         super(BayesianNetwork, self).__init__()
-        self.stub = stub
+        self.ird_tag = ird_tag
         self._end_with_sum = end_with_sum
         n_layers = len(layer_sizes)
         self._layer_sizes = layer_sizes
@@ -148,11 +148,11 @@ class BayesianLearning(object):
     """
     def __init__(self, *, layer_sizes, layer_types, layer_params, out_params,
             activation_fn, outsample_cls, x, y, n_particles,
-             stub: str, end_with_sum: bool, **kwargs):
+             ird_tag: str, end_with_sum: bool, **kwargs):
         self._net = BayesianNetwork(layer_sizes, layer_types, layer_params,
                 out_params, activation_fn, outsample_cls=outsample_cls,
-                                    stub=stub, end_with_sum=end_with_sum)
-        self.stub = stub
+                                    ird_tag=ird_tag, end_with_sum=end_with_sum)
+        self.ird_tag = ird_tag
         self._n_particles = n_particles
         self.x = x
         self.targets = y
@@ -200,7 +200,7 @@ class BayesianLearning(object):
 
         y_obs = tf.tile(tf.expand_dims(y, 0), [self.n_particles, 1])
         # BayesianNet instance with every stochastic node observed.
-        if self.stub == "regression":
+        if self.ird_tag == "regression":
             qs.update(y=y_obs)
         model, dist, self.h_pred = self.buildnet(qs)
         self._model = model
@@ -238,8 +238,8 @@ class BayesianLearning(object):
 
     @property
     def sampled_log_prob(self):
-        if self.stub != "regression":
-            raise NotImplementedError(self.stub)
+        if self.ird_tag != "regression":
+            raise NotImplementedError(self.ird_tag)
         targets = self.dist.sample(1)
         log_prob = tf.reduce_mean(self.dist.log_prob(tf.stop_gradient(targets)), 0)
         return log_prob

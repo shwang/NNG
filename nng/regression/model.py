@@ -76,16 +76,16 @@ class Model(BaseModel):
         self.omega = tf.placeholder(tf.float32, shape=[], name='omega')
 
         if not self.problem:
-            self.stub = "regression"
+            self.ird_tag = "regression"
         else:
-            self.stub = self.problem.stupid_stub
+            self.ird_tag = self.problem.nng_tag
 
         # Build the model.
         self._build_model()
         self.init_saver()
 
     def _build_model(self):
-        outsample_cls = NormalOutSample if self.stub == "regression" else None
+        outsample_cls = NormalOutSample if self.ird_tag == "regression" else None
         if self.layer_type == "emvg":
             layer_cls = EMVGLayer
         elif self.layer_type == "mvg":
@@ -131,11 +131,11 @@ class Model(BaseModel):
                 y=self.targets,
                 n_particles=self.n_particles,
                 std_y_train=self.config.std_train,
-                stub=self.stub,
+                ird_tag=self.ird_tag,
                 end_with_sum=end_with_sum)
 
         self.h_pred = tf.squeeze(self.learn.h_pred, 2)
-        if self.stub == "ird":
+        if self.ird_tag == "ird":
             main_raw, _, self._bnn = \
                     self.problem.gather_standard_rewards(self.h_pred)
             self._main = tf.reshape(main_raw, [self.n_particles, -1])
@@ -162,41 +162,41 @@ class Model(BaseModel):
         """
         Returns the output that should be used for calculating training loss.
         """
-        if self.stub == "regression":
+        if self.ird_tag == "regression":
             return self.learn.y_pred
-        elif self.stub == "ird":
+        elif self.ird_tag == "ird":
             return self.h_pred  # Idea: Try using noisy outputs for IRD?
         else:
-            raise ValueError(self.stub)
+            raise ValueError(self.ird_tag)
 
     def get_test_output(self) -> tf.Tensor:
         """
         Returns the output that should be used for testing.
         """
-        if self.stub == "regression":
+        if self.ird_tag == "regression":
             return self.h_pred
-        elif self.stub == "ird":
+        elif self.ird_tag == "ird":
             return self.h_pred
         else:
-            raise ValueError(self.stub)
+            raise ValueError(self.ird_tag)
 
     def init_saver(self):
         self.saver = tf.train.Saver(max_to_keep=self.config.max_to_keep)
 
     def _build_log_py_xw(self) -> tf.Tensor:
-        if self.stub == "regression":
+        if self.ird_tag == "regression":
             # return self.learn.log_py_xw
             return tf.reduce_sum(self.learn.log_py_xw)
-        elif self.stub == "ird":
+        elif self.ird_tag == "ird":
             output = self.get_train_output()
             loss = self.problem.build_data_loss(output,
                     l1_loss=0.0, l2_loss=0.0)
             return -loss
         else:
-            raise ValueError(self.problem.stupid_stub)
+            raise ValueError(self.problem.stupid_ird_tag)
 
     def _build_loss_prec(self) -> tf.Tensor:
-        if self.stub != "regression":
+        if self.ird_tag != "regression":
             return tf.constant(0.0, name="loss_prec")
 
         # log_alpha, log_beta = tf.trainable_variables()[-2:]  # Ewww
@@ -223,7 +223,7 @@ class Model(BaseModel):
 
     def _build_prec_op(self) -> tf.Operation:
         """Build an operation used to update outsampling precision."""
-        if self.stub == "regression":
+        if self.ird_tag == "regression":
             outsample = self.learn._net._outsample
             optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
             prec_vars = [outsample.prec_logalpha, outsample.prec_logbeta]
@@ -256,8 +256,8 @@ class Model(BaseModel):
         s = list(get_layer_outputs(n_layers))
         assert len(layers) == len(activations) == len(s)
 
-        if self.stub == "regression":
-            if self.config.true_fisher and self.stub == "regression":
+        if self.ird_tag == "regression":
+            if self.config.true_fisher and self.ird_tag == "regression":
                 # True fisher: sample model and y from the var. distribution.
                 sampled_log_prob = self.learn.sampled_log_prob
                 s_grads = tf.gradients(tf.reduce_sum(sampled_log_prob), s)
@@ -265,13 +265,15 @@ class Model(BaseModel):
                 # Empirical fisher: sample model from var distribution, setting
                 # y = target.
                 s_grads = tf.gradients(self._log_py_xw, s)
-        elif self.stub == "ird":
+        elif self.ird_tag == "ird":
             assert self.config.true_fisher, "Only true fisher supported"
             # Sample model and y from the var. distribution.
             # (Yes, _log_py_xw holds true fisher even though in regression case
             # this is the empiral fisher).
             s_grads = [tf.check_numerics(x, "ird s_grads")
                 for x in tf.gradients(self._log_py_xw, s)]
+        else:
+            raise ValueError("Invalid ird tag: {}".format(self.ird_tag))
 
         weight_updates = []
         scale_updates = []
