@@ -171,7 +171,7 @@ class Model(BaseModel):
 
     def get_test_output(self) -> tf.Tensor:
         """
-        Returns the output that should be used for testing.
+        Returns the output that should be used at test time.
         """
         if self.ird_tag == "regression":
             return self.h_pred
@@ -257,7 +257,7 @@ class Model(BaseModel):
         assert len(layers) == len(activations) == len(s)
 
         if self.ird_tag == "regression":
-            if self.config.true_fisher and self.ird_tag == "regression":
+            if self.config.true_fisher:
                 # True fisher: sample model and y from the var. distribution.
                 sampled_log_prob = self.learn.sampled_log_prob
                 s_grads = tf.gradients(tf.reduce_sum(sampled_log_prob), s)
