@@ -17,6 +17,7 @@ import nng.regression.network.ffn as ffn
 
 if TYPE_CHECKING:
     from irdplus.bnn.problem.problem import Problem
+    from irdplus.bnn.model.model import Model
 
 
 class Model(BaseModel):
@@ -30,11 +31,13 @@ class Model(BaseModel):
     omega = ... # type: tf.Tensor
 
     def __init__(self, config, input_dim: Iterable[int], n_data: int, *,
-            logger,
-            n_batch_size: Optional[int] = None,
-            n_particles_ph: Optional[tf.Tensor] = None,
-            inputs_ph: Optional[tf.Tensor] = None,
-            problem: "Optional[Problem]" = None):
+                 logger,
+                 n_batch_size: Optional[int] = None,
+                 n_particles_ph: Optional[tf.Tensor] = None,
+                 inputs_ph: Optional[tf.Tensor] = None,
+                 problem: "Optional[Problem]" = None,
+                 scale_ll: Optional[float] = None,
+                 ):
         """ Initialize a class Model.
         :param config: Configuration Bundle.
         :param input_dim: int
@@ -53,6 +56,7 @@ class Model(BaseModel):
             self.layer_type = None
         self.input_dim = input_dim  # type: List[int]
         self.n_data = n_data  # type: int
+        self.scale_ll = scale_ll
         self.logger = logger
         self.logger.info("model.n_data = {}".format(n_data))
         self.problem = problem
@@ -188,9 +192,10 @@ class Model(BaseModel):
             # return self.learn.log_py_xw
             return tf.reduce_sum(self.learn.log_py_xw)
         elif self.ird_tag == "ird":
+            assert self.scale_ll is not None
             output = self.get_train_output()
-            loss = self.problem.build_data_loss(output,
-                    l1_loss=0.0, l2_loss=0.0)
+            loss = self.problem.build_data_loss(
+                output, l1_loss=0.0, l2_loss=0.0) * self.scale_ll
             return -loss
         else:
             raise ValueError(self.problem.stupid_ird_tag)
